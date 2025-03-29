@@ -27,21 +27,19 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        scaffoldBackgroundColor: bgColor,
-        useMaterial3: true,
-        textTheme: GoogleFonts.openSansTextTheme(Theme.of(context).textTheme)
-            .apply(bodyColor: Colors.white,)
-            .copyWith(
-          bodyMedium: const TextStyle(color: bodyTextColor),
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+          scaffoldBackgroundColor: bgColor,
+          useMaterial3: true,
+          textTheme: GoogleFonts.openSansTextTheme(Theme.of(context).textTheme)
+              .apply(bodyColor: Colors.white,)
+              .copyWith(
+            bodyMedium: const TextStyle(color: bodyTextColor),
+          ),
         ),
-      ),
 
-      home: const SplashView()
+        home: const SplashView()
     );
   }
 }
-
-

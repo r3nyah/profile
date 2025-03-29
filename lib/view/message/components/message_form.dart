@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class MessageForm extends StatefulWidget {
   const MessageForm({super.key});
@@ -21,27 +22,38 @@ class _MessageFormState extends State<MessageForm> {
   @override
   void initState() {
     super.initState();
-    _user = FirebaseAuth.instance.currentUser;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _user = FirebaseAuth.instance.currentUser;
+      setState(() {});
+    });
   }
 
   Future<void> _signInWithGoogle() async {
     try {
       GoogleAuthProvider googleProvider = GoogleAuthProvider();
+      UserCredential userCredential;
       if (kIsWeb) {
+        userCredential =
         await FirebaseAuth.instance.signInWithPopup(googleProvider);
       } else {
         final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
         if (googleUser == null) return;
-        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+        final GoogleSignInAuthentication googleAuth = await googleUser
+            .authentication;
         final credential = GoogleAuthProvider.credential(
           accessToken: googleAuth.accessToken,
           idToken: googleAuth.idToken,
         );
+        userCredential =
         await FirebaseAuth.instance.signInWithCredential(credential);
       }
-      setState(() => _user = FirebaseAuth.instance.currentUser);
+
+      setState(() => _user = userCredential.user);
     } catch (e) {
-      print("Error signing in: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Login failed: $e")),
+      );
     }
   }
 
@@ -53,17 +65,23 @@ class _MessageFormState extends State<MessageForm> {
 
   Future<void> _submitMessage() async {
     if (_formKey.currentState!.validate() && _user != null) {
+      print("🚀 Sending message: ${_messageController.text} from ${_user!.email}");
+
       DocumentReference docRef = await FirebaseFirestore.instance.collection('messages').add({
-        'uid': _user!.uid,
-        'name': _user!.displayName,
+        'uid': _user!.uid,  // ✅ Ensures only the owner can update/delete
+        'name': _user!.displayName ?? "Anonymous",
         'email': _user!.email,
-        'message': _messageController.text,
+        'message': _messageController.text.trim(),  // ✅ Trim to remove extra spaces
         'timestamp': FieldValue.serverTimestamp(),
       });
+
+      print("✅ Message sent successfully! Doc ID: ${docRef.id}");
+
       setState(() {
         lastMessageId = docRef.id;
         showUndo = true;
       });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Message sent!'),
@@ -71,17 +89,23 @@ class _MessageFormState extends State<MessageForm> {
           duration: const Duration(seconds: 5),
         ),
       );
+
       _messageController.clear();
+    } else {
+      print("❌ ERROR: Form validation failed or user is null");
     }
   }
 
   Future<void> _undoMessage() async {
     if (lastMessageId != null) {
-      await FirebaseFirestore.instance.collection('messages').doc(lastMessageId).delete();
+      await FirebaseFirestore.instance.collection('messages')
+          .doc(lastMessageId)
+          .delete();
       setState(() {
         lastMessageId = null;
         showUndo = false;
       });
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Message undone!')),
       );
@@ -93,82 +117,99 @@ class _MessageFormState extends State<MessageForm> {
     return Center(
       child: Card(
         margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         elevation: 4,
         color: Colors.grey[900],
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_user == null) ...[
-                ElevatedButton.icon(
-                  onPressed: _signInWithGoogle,
-                  icon: const Icon(Icons.login, color: Colors.white),
-                  label: const Text("Sign in with Google", style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueAccent,
+          padding: const EdgeInsets.all(20),
+          child: SingleChildScrollView( // 🛠️ Prevent Overflow
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              // Ensure full width
+              mainAxisSize: MainAxisSize.min,
+              // 🛠️ Prevent taking unnecessary space
+              children: [
+                if (_user == null) ...[
+                  FilledButton.icon(
+                    onPressed: _signInWithGoogle,
+                    icon: const Icon(Icons.login, color: Colors.white),
+                    label: const Text("Sign in with Google"),
                   ),
-                ),
-              ] else ...[
-                Column(
-                  children: [
-                    CircleAvatar(
-                      backgroundImage: _user!.photoURL != null
-                          ? NetworkImage(_user!.photoURL!)
-                          : null,
-                      radius: 40,
-                      backgroundColor: Colors.grey,
-                      child: _user!.photoURL == null
-                          ? const Icon(Icons.person, size: 40, color: Colors.white)
-                          : null,
+                ] else
+                  ...[
+                    Column(
+                      children: [
+                        CircleAvatar(
+                          radius: 45,
+                          backgroundColor: Colors.grey[700],
+                          child: _user?.photoURL != null
+                              ? ClipOval(
+                            child: CachedNetworkImage(
+                              imageUrl: _user!.photoURL!,
+                              fit: BoxFit.cover,
+                              width: 90,
+                              height: 90,
+                            ),
+                          )
+                              : Text(
+                            _user!.displayName?.substring(0, 1).toUpperCase() ??
+                                "U",
+                            style: const TextStyle(
+                                fontSize: 40, color: Colors.white),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Logged in as: ${_user!.displayName ?? "User"}',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                        TextButton(
+                          onPressed: _signOut,
+                          child: const Text("Sign out", style: TextStyle(
+                              color: Colors.redAccent)),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Logged in as: ${_user!.displayName}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                    TextButton(
-                      onPressed: _signOut,
-                      child: const Text("Sign out", style: TextStyle(color: Colors.red)),
+                    const SizedBox(height: 12),
+                    Form(
+                      key: _formKey,
+                      child: Column(
+                        children: [
+                          TextFormField(
+                            controller: _messageController,
+                            decoration: InputDecoration(
+                              labelText: 'Your Message',
+                              labelStyle: const TextStyle(
+                                  color: Colors.white70),
+                              filled: true,
+                              fillColor: Colors.black12,
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ),
+                            maxLines: 3,
+                            style: const TextStyle(color: Colors.white),
+                            validator: (value) =>
+                            value!.isEmpty
+                                ? 'Enter a message'
+                                : null,
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              onPressed: _submitMessage,
+                              style: FilledButton.styleFrom(
+                                  backgroundColor: Colors.greenAccent[700]),
+                              child: const Text("Send Message"),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
-                ),
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      TextFormField(
-                        controller: _messageController,
-                        decoration: InputDecoration(
-                          labelText: 'Your Message',
-                          labelStyle: const TextStyle(color: Colors.white70),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        maxLines: 3,
-                        style: const TextStyle(color: Colors.white),
-                        validator: (value) => value!.isEmpty ? 'Enter a message' : null,
-                      ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _submitMessage,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          child: const Text("Send Message"),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ],
-            ],
+            ),
           ),
         ),
       ),
