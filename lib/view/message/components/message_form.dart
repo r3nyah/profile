@@ -130,10 +130,53 @@ class _MessageFormState extends State<MessageForm> {
               // 🛠️ Prevent taking unnecessary space
               children: [
                 if (_user == null) ...[
-                  FilledButton.icon(
-                    onPressed: _signInWithGoogle,
-                    icon: const Icon(Icons.login, color: Colors.white),
-                    label: const Text("Sign in with Google"),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(30),
+                      gradient: const LinearGradient(
+                        colors: [Colors.pink, Colors.blue],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.pink.withOpacity(0.5),
+                          offset: const Offset(-2, 2),
+                          blurRadius: 10,
+                        ),
+                        BoxShadow(
+                          color: Colors.blue.withOpacity(0.5),
+                          offset: const Offset(2, -2),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: FilledButton.icon(
+                      onPressed: _signInWithGoogle,
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+                        backgroundColor: Colors.transparent, // 👈 This is important
+                        shadowColor: Colors.transparent, // 👈 Prevents default shadow
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      ),
+                      icon: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOut,
+                        padding: const EdgeInsets.all(4),
+                        child: ClipOval(
+                          child: Image.network(
+                            'https://pbs.twimg.com/profile_images/1754606338460487681/bWupXdxo_400x400.jpg',
+                            height: 24,
+                          ),
+                        ),
+                      ),
+                      label: const Text(
+                        "Sign in with Google",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
                   ),
                 ] else
                   ...[
