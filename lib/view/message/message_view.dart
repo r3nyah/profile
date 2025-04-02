@@ -18,6 +18,7 @@ class MessageView extends StatelessWidget {
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
+        centerTitle: true,
         backgroundColor: secondaryColor,
         title: const Text(
           "Drop a Message",
@@ -29,51 +30,27 @@ class MessageView extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.all(defaultPadding),
           children: [
-            if (user != null)
-            // Card(
-            //   color: Colors.grey[900],
-            //   shape: RoundedRectangleBorder(
-            //     borderRadius: BorderRadius.circular(16),
-            //   ),
-            //   child: Padding(
-            //     padding: const EdgeInsets.all(16),
-            //     child: Column(
-            //       children: [
-            //         CircleAvatar(
-            //           radius: isMobile ? 35 : 45,
-            //           backgroundColor: Colors.grey[700],
-            //           child: const Icon(Icons.person, size: 40, color: Colors.white),
-            //         ),
-            //         const SizedBox(height: 10),
-            //         Text(
-            //           "Logged in as: ${user.email}",
-            //           style: const TextStyle(fontSize: 14, color: Colors.white),
-            //         ),
-            //         TextButton(
-            //           onPressed: () async {
-            //             await FirebaseAuth.instance.signOut();
-            //             Navigator.pushReplacement(
-            //               context,
-            //               MaterialPageRoute(builder: (context) => const MessageView()), // 🔄 Reloads the page
-            //             );
-            //           },
-            //           child: const Text(
-            //             "Sign out",
-            //             style: TextStyle(color: Colors.redAccent),
-            //           ),
-            //         ),
-            //       ],
-            //     ),
-            //   ),
-            // ),
+            if (user != null) ...[
+              // Your previous widget for user details
               const SizedBox(height: 10),
-            const MessageForm(),
-            const SizedBox(height: 10),
-            if (user != null)
+              const MessageForm(),
+              const SizedBox(height: 10),
+              // Show Message List only when the user is logged in
               SizedBox(
                 height: 400, // Adjust the height as needed
-                child: MessageList(currentUserId: user.uid), // Pass user.uid instead of user.email
+                child: MessageList(currentUserId: user.uid),
               ),
+            ] else ...[
+              // Show a login message or an alternative UI if the user is logged out
+              // const Center(child: Text("Please log in to send and view messages.")),
+              if (user == null)
+                const Center(
+                  child: Text("Please log in to send and view messages."),
+                ),
+
+              const SizedBox(height: 10),
+              const MessageForm(), // Show the message form only when logged in.
+            ],
           ],
         ),
       ),

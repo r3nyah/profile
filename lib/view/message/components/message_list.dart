@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MessageList extends StatelessWidget {
-  final String currentUserId; // Pass the logged-in user's ID
+  final String currentUserId;
 
   MessageList({required this.currentUserId});
 
   @override
   Widget build(BuildContext context) {
+    // Check if the user is logged in and the user ID is available
+    if (currentUserId.isEmpty) {
+      return const Center(child: Text("Please log in to see your messages."));
+    }
+
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('messages')
@@ -18,15 +23,15 @@ class MessageList extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (snapshot.hasError) {
-          return Center(
-            child: Text(
-              "Error: ${snapshot.error}", // Display the actual error message
-              style: const TextStyle(color: Colors.red),
-              textAlign: TextAlign.center,
-            ),
-          );
-        }
+        // if (snapshot.hasError) {
+        //   return Center(
+        //     child: Text(
+        //       "Error: ${snapshot.error}",
+        //       style: const TextStyle(color: Colors.red),
+        //       textAlign: TextAlign.center,
+        //     ),
+        //   );
+        // }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return const Center(child: Text("No messages found."));
         }
@@ -58,60 +63,63 @@ class MessageList extends StatelessWidget {
       },
     );
   }
+}
 
-  void _showMessageOptions(BuildContext context, String docId, String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        TextEditingController _updateController =
-        TextEditingController(text: message);
+void _showMessageOptions(BuildContext context, String docId, String message) {
+  TextEditingController _updateController = TextEditingController(text: message);
 
-        return AlertDialog(
-          title: const Text("Message Options"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _updateController,
-                decoration: const InputDecoration(labelText: "Edit Message"),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel"),
-            ),
-            TextButton(
-              onPressed: () {
-                FirebaseFirestore.instance
-                    .collection('messages')
-                    .doc(docId)
-                    .update({'message': _updateController.text}).then((_) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Message Updated!")));
-                });
-              },
-              child: const Text("Update"),
-            ),
-            TextButton(
-              onPressed: () {
-                FirebaseFirestore.instance
-                    .collection('messages')
-                    .doc(docId)
-                    .delete()
-                    .then((_) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Message Deleted!")));
-                });
-              },
-              child: const Text("Delete", style: TextStyle(color: Colors.red)),
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text("Message Options"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // TextField to allow the user to edit the message
+            TextField(
+              controller: _updateController,
+              decoration: const InputDecoration(labelText: "Edit Message"),
             ),
           ],
-        );
-      },
-    );
-  }
+        ),
+        actions: [
+          // Cancel button
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          // Update button - update the message in Firestore
+          TextButton(
+            onPressed: () {
+              FirebaseFirestore.instance
+                  .collection('messages')
+                  .doc(docId)
+                  .update({'message': _updateController.text}).then((_) {
+                Navigator.pop(context); // Close the dialog
+                ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Message Updated!")));
+              });
+            },
+            child: const Text("Update"),
+          ),
+          // Delete button - delete the message from Firestore
+          TextButton(
+            onPressed: () {
+              FirebaseFirestore.instance
+                  .collection('messages')
+                  .doc(docId)
+                  .delete()
+                  .then((_) {
+                Navigator.pop(context); // Close the dialog
+                ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Message Deleted!")));
+              });
+            },
+            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      );
+    },
+  );
 }
